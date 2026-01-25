@@ -1,3 +1,14 @@
+// ===================== 路径宏定义 =====================
+
+#ifndef RESOURCE_PATH_H
+#define RESOURCE_PATH_H
+
+#define PROJECT_ROOT "F:/OpenGL-learning/"
+#endif
+
+#define IMAGE_DIR PROJECT_ROOT "Image/"
+#define IMAGE_PATH(filename) IMAGE_DIR filename
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -5,6 +16,10 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
+#include <filesystem>
+
+#define STB_IMAGE_IMPLEMENTATION
+#include <stb_image.h>
 
 #include <Shader/Shader.h>
 #include <Struct/Vertex.h>
@@ -21,6 +36,7 @@ void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow* window, double xposIn, double yposIn);
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
 void printOperationTips();
+unsigned int loadTexture(char const * path);
 
 // window 设置
 const unsigned int SCR_WIDTH = 800;
@@ -107,14 +123,20 @@ int main()
     // 开启深度测试
     glEnable(GL_DEPTH_TEST);
 
+    // 创建木箱纹理
+    // ------------------------------
+    unsigned int texture = loadTexture(IMAGE_PATH("container2.png"));
+
     // 创建球体着色器
     // ------------------------------
     Shader cuboidShader("Shader.vs", "Shader.fs");
+    // 绑定对应纹理单元
+    cuboidShader.use();
+    cuboidShader.setInt("material.diffuse", 0);
     
     // 创建光源着色器
     // ------------------------------
     Shader lightShader("lightShader.vs", "lightShader.fs");
-
 
     // 创建对应球体和光源立方体
     // ------------------------------------------------------------------
@@ -184,34 +206,37 @@ int main()
             lightColor.y = sin(lightColorChangeTime * 0.7f);
             lightColor.z = sin(lightColorChangeTime * 1.3f);
 
-            ambientColor = lightColor * glm::vec3(0.2f);
-            diffuseColor = lightColor * glm::vec3(0.5f);
+            ambientColor = lightColor * glm::vec3(0.2f, 0.2f, 0.2f);
+            diffuseColor = lightColor * glm::vec3(0.5f, 0.5f, 0.5f);
         } else {
-            ambientColor = glm::vec3(1.0f, 0.5f, 0.31f);
-            diffuseColor = glm::vec3(1.0f, 0.5f, 0.31f);
+            lightColor = glm::vec3(1.0f);
+            ambientColor = glm::vec3(0.2f, 0.2f, 0.2f);
+            diffuseColor = glm::vec3(0.5f, 0.5f, 0.5f);
         }
         
         // 定义立方体的着色器
         cuboidShader.use();
         cuboidShader.setVec3("viewPos", cameraPos);
 
-        // 设置立方体的材质
-        cuboidShader.setVec3("material.ambient",  1.0f, 0.5f, 0.31f);
-        cuboidShader.setVec3("material.diffuse",  1.0f, 0.5f, 0.31f);
+        // 设置立方体的其他光照参数
         cuboidShader.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
-        cuboidShader.setFloat("material.shininess", 32.0f);
+        cuboidShader.setFloat("material.shininess", 64.0f);
 
         // 设置立方体的光照位置和强度
         cuboidShader.setVec3("lightColor", glm::vec3(1.0f));
         cuboidShader.setVec3("light.position", lightPos);
         cuboidShader.setVec3("light.ambient",  ambientColor);
         cuboidShader.setVec3("light.diffuse",  diffuseColor); // 将光照调暗了一些以搭配场景
-        cuboidShader.setVec3("light.specular", 1.0f, 1.0f, 1.0f); 
+        cuboidShader.setVec3("light.specular", 0.5f, 0.5f, 0.5f); 
 
         model = glm::mat4(1.0f);
         cuboidShader.setMat4("model", model);
         cuboidShader.setMat4("view", view);
         cuboidShader.setMat4("projection", projection);
+
+        // 绑定纹理到对应的纹理单元
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
         
         // 调用立方体渲染借口
         cuboid.render();
@@ -382,4 +407,43 @@ void printOperationTips()
     std::cout << "  调整窗口大小 - 自动更新视口" << std::endl;
     std::cout << "========================================" << std::endl;
     std::cout << std::endl;
+}
+
+// 用于从文件加载二维纹理的辅助函数
+// ---------------------------------------------------
+unsigned int loadTexture(char const * path)
+{
+    unsigned int textureID;
+    glGenTextures(1, &textureID);
+    
+    int width, height, nrComponents;
+    unsigned char *data = stbi_load(path, &width, &height, &nrComponents, 0);
+    if (data)
+    {
+        GLenum format;
+        if (nrComponents == 1)
+            format = GL_RED;
+        else if (nrComponents == 3)
+            format = GL_RGB;
+        else if (nrComponents == 4)
+            format = GL_RGBA;
+        
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
+        glGenerateMipmap(GL_TEXTURE_2D);
+
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        stbi_image_free(data);
+    }
+    else
+    {
+        std::cout << "Texture failed to load at path: " << path << std::endl;
+        stbi_image_free(data);
+    }
+
+    return textureID;
 }
