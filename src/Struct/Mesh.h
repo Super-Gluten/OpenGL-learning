@@ -144,20 +144,11 @@ struct Mesh {
         }
         
         glBindVertexArray(VAO);
-        GLenum err = glGetError();
-        if (err != GL_NO_ERROR) {
-            std::cerr << "OpenGL error binding VAO: " << err << std::endl;
-        }  
         
         glDrawElements(GL_TRIANGLES, 
                     triangles.size() * 3,
                     GL_UNSIGNED_INT, 
                     0);
-        
-        err = glGetError();
-        if (err != GL_NO_ERROR) {
-            std::cerr << "OpenGL error in glDrawElements: " << err << std::endl;
-        }
         
         glBindVertexArray(0);
     }

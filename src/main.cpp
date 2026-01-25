@@ -123,16 +123,18 @@ int main()
     // 开启深度测试
     glEnable(GL_DEPTH_TEST);
 
-    // 创建木箱纹理
+    // 加载纹理
     // ------------------------------
-    unsigned int texture = loadTexture(IMAGE_PATH("container2.png"));
+    unsigned int diffsueMap = loadTexture(IMAGE_PATH("container2.png"));
+    unsigned int specularMap = loadTexture(IMAGE_PATH("container2_specular.png"));
 
     // 创建球体着色器
     // ------------------------------
     Shader cuboidShader("Shader.vs", "Shader.fs");
     // 绑定对应纹理单元
     cuboidShader.use();
-    cuboidShader.setInt("material.diffuse", 0);
+    cuboidShader.setInt("material.diffuse",  0);
+    cuboidShader.setInt("material.specular", 1);
     
     // 创建光源着色器
     // ------------------------------
@@ -219,7 +221,6 @@ int main()
         cuboidShader.setVec3("viewPos", cameraPos);
 
         // 设置立方体的其他光照参数
-        cuboidShader.setVec3("material.specular", 0.5f, 0.5f, 0.5f);
         cuboidShader.setFloat("material.shininess", 64.0f);
 
         // 设置立方体的光照位置和强度
@@ -236,7 +237,10 @@ int main()
 
         // 绑定纹理到对应的纹理单元
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindTexture(GL_TEXTURE_2D, diffsueMap);
+
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, specularMap);
         
         // 调用立方体渲染借口
         cuboid.render();
@@ -427,7 +431,7 @@ unsigned int loadTexture(char const * path)
             format = GL_RGB;
         else if (nrComponents == 4)
             format = GL_RGBA;
-        
+
         glBindTexture(GL_TEXTURE_2D, textureID);
         glTexImage2D(GL_TEXTURE_2D, 0, format, width, height, 0, format, GL_UNSIGNED_BYTE, data);
         glGenerateMipmap(GL_TEXTURE_2D);
