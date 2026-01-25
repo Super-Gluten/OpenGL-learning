@@ -145,11 +145,11 @@ int main()
 
     // 创建球体着色器
     // ------------------------------
-    Shader cuboidShader("Shader.vs", "Shader.fs");
+    Shader lightingShader("Shader.vs", "Shader.fs");
     // 绑定对应纹理单元
-    cuboidShader.use();
-    cuboidShader.setInt("material.diffuse",  0);
-    cuboidShader.setInt("material.specular", 1);
+    lightingShader.use();
+    lightingShader.setInt("material.diffuse",  0);
+    lightingShader.setInt("material.specular", 1);
     
     // 创建光源着色器
     // ------------------------------
@@ -232,27 +232,32 @@ int main()
         }
         
         // 定义立方体的着色器
-        cuboidShader.use();
-        cuboidShader.setVec3("viewPos", cameraPos);
+        lightingShader.use();
+        lightingShader.setVec3("viewPos", cameraPos);
 
         // 设置立方体的其他光照参数
-        cuboidShader.setFloat("material.shininess", 64.0f);
+        lightingShader.setFloat("material.shininess", 64.0f);
 
         // 设置立方体的光照位置和强度
-        cuboidShader.setVec3("lightColor", glm::vec3(1.0f));
-        // cuboidShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f);
-        cuboidShader.setVec3("light.position", lightPos);
-        cuboidShader.setFloat("light.constant",  1.0f);
-        cuboidShader.setFloat("light.linear",    0.09f);
-        cuboidShader.setFloat("light.quadratic", 0.032f);
-        cuboidShader.setVec3("light.ambient",  ambientColor);
-        cuboidShader.setVec3("light.diffuse",  diffuseColor); // 将光照调暗了一些以搭配场景
-        cuboidShader.setVec3("light.specular", 0.5f, 0.5f, 0.5f); 
+        lightingShader.setVec3("lightColor", glm::vec3(1.0f));
+        // lightingShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f);
+        // lightingShader.setVec3("light.position", lightPos);
+
+        lightingShader.setVec3("light.position",  cameraPos);
+        lightingShader.setVec3("light.direction", cameraFront);
+        lightingShader.setFloat("light.cutOff",   glm::cos(glm::radians(12.5f)));
+
+        lightingShader.setFloat("light.constant",  1.0f);
+        lightingShader.setFloat("light.linear",    0.09f);
+        lightingShader.setFloat("light.quadratic", 0.032f);
+        lightingShader.setVec3("light.ambient",  ambientColor);
+        lightingShader.setVec3("light.diffuse",  diffuseColor); // 将光照调暗了一些以搭配场景
+        lightingShader.setVec3("light.specular", 0.5f, 0.5f, 0.5f); 
 
         // model = glm::mat4(1.0f);
-        // cuboidShader.setMat4("model", model);
-        cuboidShader.setMat4("view", view);
-        cuboidShader.setMat4("projection", projection);
+        // lightingShader.setMat4("model", model);
+        lightingShader.setMat4("view", view);
+        lightingShader.setMat4("projection", projection);
 
         // 绑定纹理到对应的纹理单元
         glActiveTexture(GL_TEXTURE0);
@@ -267,7 +272,7 @@ int main()
             model = glm::translate(model, cubePositions[i]);
             float angle = 20.0f * i;
             model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            cuboidShader.setMat4("model", model);
+            lightingShader.setMat4("model", model);
 
             cuboid.render();
         }
