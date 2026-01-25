@@ -177,7 +177,7 @@ int main()
 
         // 绘制
         // ------
-        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // 根据需求 按线框/填充模式绘制球体
@@ -240,7 +240,11 @@ int main()
 
         // 设置立方体的光照位置和强度
         cuboidShader.setVec3("lightColor", glm::vec3(1.0f));
-        cuboidShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f);
+        // cuboidShader.setVec3("light.direction", -0.2f, -1.0f, -0.3f);
+        cuboidShader.setVec3("light.position", lightPos);
+        cuboidShader.setFloat("light.constant",  1.0f);
+        cuboidShader.setFloat("light.linear",    0.09f);
+        cuboidShader.setFloat("light.quadratic", 0.032f);
         cuboidShader.setVec3("light.ambient",  ambientColor);
         cuboidShader.setVec3("light.diffuse",  diffuseColor); // 将光照调暗了一些以搭配场景
         cuboidShader.setVec3("light.specular", 0.5f, 0.5f, 0.5f); 
