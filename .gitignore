@@ -1,0 +1,168 @@
+# ====================== CMake 核心构建文件（超大文件重灾区）======================
+# CMake 自动生成的配置文件
+CMakeCache.txt
+CMakeFiles/
+CMakeScripts/
+# 构建输出的 Makefile/工程文件（跨平台）
+Makefile
+Makefile.in
+*.cmake
+cmake_install.cmake
+install_manifest.txt
+# 自定义构建目录（无论命名为 build/、cmake-build-* 都覆盖）
+build/
+cmake-build-debug/
+cmake-build-release/
+cmake-build-relwithdebinfo/
+_build/
+out/
+# CTest 测试文件（无关且可能体积大）
+CTestTestfile.cmake
+Testing/
+
+# ====================== 跨平台编译产物（核心，避免超大二进制）======================
+# Windows 编译产物
+*.exe
+*.exe~
+*.dll
+*.dll~
+*.obj
+*.pdb
+*.ilk
+*.lib
+*.sln
+*.suo
+*.user
+*.userosscache
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+# Linux/Mac 编译产物
+*.o
+*.so
+*.so.*
+*.a
+*.la
+*.lo
+*.dylib
+*.dSYM/
+*.gcno
+*.gcda
+# 编译中间文件
+*.i
+*.ii
+*.s
+*.asm
+# 链接器输出
+*.out
+*.hex
+*.map
+
+# ====================== 各 IDE/编辑器配置（避免环境冲突）======================
+# CLion/Qt Creator
+.idea/
+*.iml
+*.ipr
+*.iws
+# VSCode
+.vscode/
+*.code-workspace
+# Xcode (Mac)
+*.xcodeproj/
+*.xcworkspace/
+xuserdata/
+# Vim/Emacs 临时文件
+*.swp
+*.swo
+*~
+.\#*
+\#*#
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# ====================== 系统级临时文件（跨平台）======================
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+$RECYCLE.BIN/
+# Mac
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+# Linux
+*.swp
+/var/
+/tmp/
+/nohup.out
+# 日志文件（可能超大，如渲染日志）
+*.log
+*.log.*
+logs/
+
+# ====================== 计算机图形学特有超大/临时文件（重点！）======================
+# 着色器编译产物（二进制体积大，无需共享）
+*.spv        # Vulkan 编译后着色器
+*.compiled   # 自定义着色器编译文件
+*.glslc      # GLSL 编译中间文件
+*.hlslc      # HLSL 编译中间文件
+# 模型/纹理缓存（本地加载缓存，超大）
+cache/
+texture_cache/
+model_cache/
+asset_cache/
+# 渲染输出（截图/视频/深度图，体积极大）
+render_output/
+screenshots/
+videos/
+depth_maps/
+frame_buffer/
+# 第三方库构建产物（如果仓库包含第三方库源码，仅保留源码，忽略编译产物）
+external/
+3rdparty/
+libs/
+deps/
+# 临时测试资源（测试用模型/纹理，无需共享）
+test_assets/
+temp_assets/
+# 大型二进制资源（如果必须共享，用 Git LFS 管理，此处先忽略）
+*.fbx
+*.obj
+*.blend
+*.png
+*.jpg
+*.jpeg
+*.tga
+*.bmp
+*.hdr
+*.exr
+*.mp4
+*.avi
+*.zip
+*.7z
+*.rar
+
+# ====================== 其他风险文件（避免超大文件漏网）======================
+# 备份文件
+*.bak
+*.backup
+*.old
+*.orig
+# 压缩包/安装包
+*.tar
+*.tar.gz
+*.bz2
+*.xz
+*.deb
+*.rpm
+*.pkg
+# 虚拟环境/容器文件
+venv/
+env/
+.dockerignore
+.docker/
