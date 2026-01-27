@@ -90,6 +90,10 @@ file(GLOB_RECURSE STRUCT
     ${CMAKE_SOURCE_DIR}/src/Struct/*.h
 )
 
+file(GLOB CAMERA
+    ${CMAKE_SOURCE_DIR}/src/Camera/*.h
+)
+
 # 创建可执行文件
 add_executable(${PROJECT_NAME} 
     ${PROJECT_SOURCES} 
@@ -142,4 +146,8 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     $<TARGET_FILE_DIR:${PROJECT_NAME}>
 )
 
-message(STATUS "SHADERS: ${SHADERS}")
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD 
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${CAMERA} 
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>
+)
