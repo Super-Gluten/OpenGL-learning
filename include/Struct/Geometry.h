@@ -2,8 +2,7 @@
 #define GEOMETRY_H
 
 #include "Mesh.h"
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
+
 #include <iostream>
 #include <memory>
 
@@ -12,7 +11,7 @@ public:
     enum Type {
         SPHERE,                 // 球体
         CUBOID,                 // 长方体（直棱柱）
-        QUADRANGULAR_PRISM,            // 四棱柱
+        QUADRANGULAR_PRISM,     // 四棱柱
         UNKNOWN                 // 其他未知几何体
     };
 
@@ -33,7 +32,7 @@ public:
     
     // 获取顶点和索引的引用（用于子类填充数据）
     std::vector<Vertex>& getVertices() { return mesh_.vertices; }
-    std::vector<Triangle>& getTriangles() { return mesh_.triangles; }
+    std::vector<unsigned int>& getIndices() { return mesh_.indices; }
     
     // 初始化OpenGL缓冲区（必须在OpenGL上下文初始化后调用）
     bool initBuffers() {
@@ -41,8 +40,8 @@ public:
     }
     
     // 渲染几何体
-    void render() const {
-        mesh_.render();
+    void render(Shader shader) const {
+        mesh_.render(shader);
     }
     
     // 变换相关接口

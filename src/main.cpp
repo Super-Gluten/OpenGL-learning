@@ -1,5 +1,7 @@
-// ===================== 路径宏定义 =====================
+#define _HAS_STD_BYTE 0          // 禁用C++17的std::byte，避免和Windows的byte冲突
+#define WIN32_LEAN_AND_MEAN      // 精简Windows头文件，减少冗余定义
 
+// ===================== 路径宏定义 =====================
 #ifndef RESOURCE_PATH_H
 #define RESOURCE_PATH_H
 
@@ -9,6 +11,9 @@
 #define IMAGE_DIR PROJECT_ROOT "Image/"
 #define IMAGE_PATH(filename) IMAGE_DIR filename
 
+#define MODEL_DIR PROJECT_ROOT "Model/"
+#define MODEL_PATH(filename) MODEL_DIR filename
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -16,18 +21,17 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <iostream>
-#include <filesystem>
 
-#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
 
-#include <Shader/Shader.h>
-#include <Struct/Vertex.h>
-#include <Struct/Mesh.h>
-#include <Struct/Cuboid.h>
-#include <Struct/Sphere.h>
+#include "Shader/Shader.h"
+#include "Struct/Vertex.h"
+#include "Struct/Mesh.h"
+#include "Struct/Cuboid.h"
+#include "Struct/Sphere.h"
+#include "Struct/Model.h"
 
-#include <Camera/Camera.h>
+#include "Camera/Camera.h"
 
 #ifdef _WIN32
     #include <windows.h>
@@ -77,27 +81,6 @@ int lastEState = GLFW_RELEASE;
 int lastTState = GLFW_RELEASE;
 int lastCState = GLFW_RELEASE;
 
-// position
-glm::vec3 cubePositions[] = {
-    glm::vec3( 0.0f,  0.0f,  0.0f),
-    glm::vec3( 2.0f,  5.0f, -15.0f),
-    glm::vec3(-1.5f, -2.2f, -2.5f),
-    glm::vec3(-3.8f, -2.0f, -12.3f),
-    glm::vec3( 2.4f, -0.4f, -3.5f),
-    glm::vec3(-1.7f,  3.0f, -7.5f),
-    glm::vec3( 1.3f, -2.0f, -2.5f),
-    glm::vec3( 1.5f,  2.0f, -2.5f),
-    glm::vec3( 1.5f,  0.2f, -1.5f),
-    glm::vec3(-1.3f,  1.0f, -1.5f)
-};
-
-glm::vec3 pointLightPositions[] = {
-    glm::vec3( 0.7f,  0.2f,  2.0f),
-    glm::vec3( 2.3f, -3.3f, -4.0f),
-    glm::vec3(-4.0f,  2.0f, -12.0f),
-    glm::vec3( 0.0f,  0.0f, -3.0f)
-};
-
 
 int main()
 {
@@ -139,35 +122,15 @@ int main()
         return -1;
     }
 
+    // tell stb_image.h to flip loaded texture's on the y-axis (before loading model).
+    stbi_set_flip_vertically_on_load(true);
+
     // 开启深度测试
     glEnable(GL_DEPTH_TEST);
 
-    // 加载纹理
-    // ------------------------------
-    unsigned int diffsueMap = loadTexture(IMAGE_PATH("container2.png"));
-    unsigned int specularMap = loadTexture(IMAGE_PATH("container2_specular.png"));
+    Shader ourShader("Shader.vs", "Shader.fs");
 
-    // 创建球体着色器
-    // ------------------------------
-    Shader lightingShader("Shader.vs", "Shader.fs");
-    // 绑定对应纹理单元
-    lightingShader.use();
-    lightingShader.setInt("material.diffuse",  0);
-    lightingShader.setInt("material.specular", 1);
-    
-    // 创建光源着色器
-    // ------------------------------
-    Shader lightShader("lightShader.vs", "lightShader.fs");
-
-    // 创建对应立方体和光源立方体
-    // ----------------------------------
-    Cuboid cuboid;
-    Cuboid LightCuboid;
-
-
-
-    // 输出操作提示信息
-    printOperationTips();
+    Model ourModel(MODEL_PATH("backpack/backpack.obj"));
 
     // 渲染主循环
     // -----------
@@ -181,156 +144,26 @@ int main()
         // -----
         processInput(window);
 
-        // 绘制
+        // render
         // ------
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // 设置片段着色器参数
-        lightingShader.use();
-        lightingShader.setVec3("viewPos", camera.position_);
-        lightingShader.setFloat("material.shininess", 32.0f);
-        lightingShader.setVec3("lightColor", glm::vec3(1.0f));
-        // directional light
-        lightingShader.setVec3("dirLight.direction", -0.2f, -1.0f, -0.3f);
-        lightingShader.setVec3("dirLight.ambient", 0.05f, 0.05f, 0.05f);
-        lightingShader.setVec3("dirLight.diffuse", 0.4f, 0.4f, 0.4f);
-        lightingShader.setVec3("dirLight.specular", 0.5f, 0.5f, 0.5f);
-        // point light 1
-        lightingShader.setVec3("pointLights[0].position", pointLightPositions[0]);
-        lightingShader.setVec3("pointLights[0].ambient", 0.05f, 0.05f, 0.05f);
-        lightingShader.setVec3("pointLights[0].diffuse", 0.8f, 0.8f, 0.8f);
-        lightingShader.setVec3("pointLights[0].specular", 1.0f, 1.0f, 1.0f);
-        lightingShader.setFloat("pointLights[0].constant", 1.0f);
-        lightingShader.setFloat("pointLights[0].linear", 0.09f);
-        lightingShader.setFloat("pointLights[0].quadratic", 0.032f);
-        // point light 2
-        lightingShader.setVec3("pointLights[1].position", pointLightPositions[1]);
-        lightingShader.setVec3("pointLights[1].ambient", 0.05f, 0.05f, 0.05f);
-        lightingShader.setVec3("pointLights[1].diffuse", 0.8f, 0.8f, 0.8f);
-        lightingShader.setVec3("pointLights[1].specular", 1.0f, 1.0f, 1.0f);
-        lightingShader.setFloat("pointLights[1].constant", 1.0f);
-        lightingShader.setFloat("pointLights[1].linear", 0.09f);
-        lightingShader.setFloat("pointLights[1].quadratic", 0.032f);
-        // point light 3
-        lightingShader.setVec3("pointLights[2].position", pointLightPositions[2]);
-        lightingShader.setVec3("pointLights[2].ambient", 0.05f, 0.05f, 0.05f);
-        lightingShader.setVec3("pointLights[2].diffuse", 0.8f, 0.8f, 0.8f);
-        lightingShader.setVec3("pointLights[2].specular", 1.0f, 1.0f, 1.0f);
-        lightingShader.setFloat("pointLights[2].constant", 1.0f);
-        lightingShader.setFloat("pointLights[2].linear", 0.09f);
-        lightingShader.setFloat("pointLights[2].quadratic", 0.032f);
-        // point light 4
-        lightingShader.setVec3("pointLights[3].position", pointLightPositions[3]);
-        lightingShader.setVec3("pointLights[3].ambient", 0.05f, 0.05f, 0.05f);
-        lightingShader.setVec3("pointLights[3].diffuse", 0.8f, 0.8f, 0.8f);
-        lightingShader.setVec3("pointLights[3].specular", 1.0f, 1.0f, 1.0f);
-        lightingShader.setFloat("pointLights[3].constant", 1.0f);
-        lightingShader.setFloat("pointLights[3].linear", 0.09f);
-        lightingShader.setFloat("pointLights[3].quadratic", 0.032f);
-        // spotLight
-        lightingShader.setVec3("spotLight.position", camera.position_);
-        lightingShader.setVec3("spotLight.direction", camera.front_);
-        lightingShader.setVec3("spotLight.ambient", 0.0f, 0.0f, 0.0f);
-        lightingShader.setVec3("spotLight.diffuse", 1.0f, 1.0f, 1.0f);
-        lightingShader.setVec3("spotLight.specular", 1.0f, 1.0f, 1.0f);
-        lightingShader.setFloat("spotLight.constant", 1.0f);
-        lightingShader.setFloat("spotLight.linear", 0.09f);
-        lightingShader.setFloat("spotLight.quadratic", 0.032f);
-        lightingShader.setFloat("spotLight.cutOff", glm::cos(glm::radians(12.5f)));
-        lightingShader.setFloat("spotLight.outerCutOff", glm::cos(glm::radians(15.0f)));  
+        // don't forget to enable shader before setting uniforms
+        ourShader.use();
 
-        // 根据需求 按线框/填充模式绘制球体
-        if (is_fill) {
-            // 恢复为填充模式（默认）
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        } else {
-            // 设置多边形模式为线框
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        }
+        // view/projection transformations
+        glm::mat4 projection = glm::perspective(glm::radians(camera.zoom_), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+        glm::mat4 view = camera.GetViewMatrix();
+        ourShader.setMat4("projection", projection);
+        ourShader.setMat4("view", view);
 
-        // 是否进行灯光旋转
-        // ------------------------------------
-        if (is_lightRotate) {
-            float radius = 10.0f;
-            float lightRotateTime = currentFrame - lightRotateStartTime;
-            // 开启光源旋转
-            // 计算光源在X-Z平面上的旋转位置
-            lightPos.x = lightRotateRadius * sin(lightRotateTime * lightRotateSpeed);
-            lightPos.z = lightRotateRadius * cos(lightRotateTime * lightRotateSpeed);
-            lightPos.y = 1.0f; 
-        }
-
-        // 是否进行灯光变色
-        // ------------------------------------
-        if (is_lightColorChange) {
-            float lightColorChangeTime = currentFrame - lightColorChangeStartTime;
-            lightColor.x = sin(lightColorChangeTime * 2.0f);
-            lightColor.y = sin(lightColorChangeTime * 0.7f);
-            lightColor.z = sin(lightColorChangeTime * 1.3f);
-
-            ambientColor = lightColor * glm::vec3(0.2f, 0.2f, 0.2f);
-            diffuseColor = lightColor * glm::vec3(0.5f, 0.5f, 0.5f);
-        } else {
-            lightColor = glm::vec3(1.0f);
-            ambientColor = glm::vec3(0.2f, 0.2f, 0.2f);
-            diffuseColor = glm::vec3(0.5f, 0.5f, 0.5f);
-        }
-
-        // 定义观察矩阵与投影矩阵
-        // ------------------------------------
-        glm::mat4 projection    = glm::mat4(1.0f); 
-        
-        projection = glm::perspective(glm::radians(camera.zoom_), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-
-        lightingShader.setMat4("view", camera.GetViewMatrix());
-        lightingShader.setMat4("projection", projection);
-
-        // 绑定纹理到对应的纹理单元
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, diffsueMap);
-
-        glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, specularMap);
-
-        // 设置对应模型矩阵，绘制多个立方体
-        for(unsigned int i = 0; i < 10; i++)
-        {
-            glm::mat4 model = glm::mat4(1.0f);
-            model = glm::translate(model, cubePositions[i]);
-            float angle = 20.0f * i;
-            model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-            lightingShader.setMat4("model", model);
-
-            cuboid.render();
-        }
-
-        // 是否渲染光源
-        // ------------------------------------
-        if (is_renderLight)
-        {
-            // 定义光源着色器
-            // ------------------------------------
-            lightShader.use();
-            // 始终为填充模式
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-            lightShader.setMat4("view", camera.GetViewMatrix());
-            lightShader.setMat4("projection", projection);
-            lightShader.setVec3("lightColor", lightColor);
-
-            // 为光源着色器定义模型位置和视角关系
-            for (unsigned int i = 0; i < 4; i++)
-            {
-                glm::mat4 model = glm::mat4(1.0f);
-                model = glm::translate(model, lightPos + pointLightPositions[i]);
-                model = glm::scale(model, glm::vec3(0.2f));
-                lightShader.setMat4("model", model);
-
-                // 渲染立方体
-                LightCuboid.render();
-            }
-        }
+        // render the loaded model
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.0f, 0.0f, 0.0f)); // translate it down so it's at the center of the scene
+        model = glm::scale(model, glm::vec3(1.0f, 1.0f, 1.0f));	// it's a bit too big for our scene, so scale it down
+        ourShader.setMat4("model", model);
+        ourModel.render(ourShader);
 
         // glfw: 交换缓冲区并拉取 IO 事件
         // -------------------------------------------------------------------------------

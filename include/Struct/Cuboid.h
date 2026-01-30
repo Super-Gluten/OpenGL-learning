@@ -34,7 +34,7 @@ private:
         clear();
         
         auto& vertices = getVertices();
-        auto& triangles = getTriangles();
+        auto& indices = getIndices();
         
         float halfW = width_ * 0.5f;
         float halfH = height_ * 0.5f;
@@ -87,7 +87,7 @@ private:
         
         // 为每个面生成4个顶点和2个三角形
         for (int face = 0; face < 6; ++face) {
-            int baseIndex = vertices.size();
+            unsigned int baseIndex = vertices.size();
             
             // 添加4个顶点
             for (int i = 0; i < 4; ++i) {
@@ -95,9 +95,8 @@ private:
                 vertices.emplace_back(positions[posIdx], smoothNormals[posIdx], texCoords[i], color);
             }
             
-            // 添加2个三角形（逆时针）
-            triangles.emplace_back(baseIndex, baseIndex + 1, baseIndex + 2);
-            triangles.emplace_back(baseIndex, baseIndex + 2, baseIndex + 3);
+            // 添加2个三角形（逆时针）顶点到 indices 中
+            indices.insert(indices.end(), {baseIndex, baseIndex + 1, baseIndex + 2, baseIndex, baseIndex + 2, baseIndex + 3});
         }
         if (!initBuffers()) {
             std::cout << "Error: Failed to init Cuboid's Buffers" << std::endl;

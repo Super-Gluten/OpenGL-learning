@@ -29,7 +29,7 @@ private:
         clear();
         
         auto& vertices = getVertices();
-        auto& triangles = getTriangles();
+        auto& indices = getIndices();
         
         // 生成顶点
         for (int i = 0; i <= segments_; ++i) {
@@ -68,14 +68,13 @@ private:
         for (int i = 0; i < segments_; ++i) {
             for (int j = 0; j < segments_; ++j) {
                 // 当前四边形的四个顶点索引
-                int v0 = i * (segments_ + 1) + j;          // 左上
-                int v1 = v0 + 1;                           // 右上
-                int v2 = v1 + (segments_ + 1);            // 右下
-                int v3 = v0 + (segments_ + 1);            // 左下
+                unsigned int v0 = i * (segments_ + 1) + j;          // 左上
+                unsigned int v1 = v0 + 1;                           // 右上
+                unsigned int v2 = v1 + (segments_ + 1);            // 右下
+                unsigned int v3 = v0 + (segments_ + 1);            // 左下
                 
-                // 添加两个三角形（逆时针顺序）
-                triangles.emplace_back(v0, v1, v2);
-                triangles.emplace_back(v0, v2, v3);
+                // 添加两个三角形（逆时针顺序）顶点到 indices 中
+                indices.insert(indices.end(), {v0, v1, v2, v0, v2, v3});
             }
         }
         

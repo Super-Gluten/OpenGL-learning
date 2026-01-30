@@ -1,8 +1,20 @@
+# 1. CMake 版本要求
+# --------------------------------
 cmake_minimum_required(VERSION 3.15)
-project(MyGLFWImGuiProject)
+cmake_policy(VERSION 3.15)
+
+# 2. 项目定义
+# --------------------------------
+project(LearnOpenGL)
+
+# 3. C++ 标准设置
+# --------------------------------
 # 设置 C++ 标准为 C++17
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# 4. 构建类型配置
+# --------------------------------
 # 设置编译器模式为 Debug
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Debug)
@@ -24,7 +36,6 @@ else()
     set(IS_MINGW ON)
 endif()
 
-
 # 设置输出目录
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -33,20 +44,21 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 # 查找OpenGL
 find_package(OpenGL REQUIRED)
 
-# 下载GLFW和ImGui
+# ===================== FetchContent 拉取所有依赖 =====================
 include(FetchContent)
+
+# 1. GLFW 
 FetchContent_Declare(
     glfw
     URL https://github.com/glfw/glfw/releases/download/3.3.8/glfw-3.3.8.zip
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
-
-# 禁用GLFW的示例、测试、文档（减少编译时间）
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
 
+# 2. ImGui 
 FetchContent_Declare(
     imgui
     URL https://github.com/ocornut/imgui/archive/refs/tags/v1.90.4.zip
@@ -54,6 +66,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(imgui)
 
+# 3. GLM 
 FetchContent_Declare(
     glm
     URL https://github.com/g-truc/glm/archive/refs/tags/1.0.0.zip 
@@ -61,7 +74,21 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(glm)
 
-# ImGui源文件
+# 4. Assimp
+FetchContent_Declare(
+    assimp
+    URL https://github.com/assimp/assimp/archive/refs/tags/v6.0.4.zip
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+)
+# 禁用Assimp不必要的组件，加快编译
+set(ASSIMP_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(ASSIMP_BUILD_ZLIB ON CACHE BOOL "" FORCE)  # 内置zlib，避免依赖问题
+set(ASSIMP_NO_EXPORT ON CACHE BOOL "" FORCE)   # 只保留导入功能
+FetchContent_MakeAvailable(assimp)
+
+# ===================== 源文件配置 =====================
+# ImGui 源文件 (原有，保留)
 set(IMGUI_SOURCES
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
@@ -72,66 +99,71 @@ set(IMGUI_SOURCES
     ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
-file(GLOB_RECURSE PROJECT_SOURCES
-    ${CMAKE_SOURCE_DIR}/src/*.cpp
-    ${CMAKE_SOURCE_DIR}/src/*.c
-    ${CMAKE_SOURCE_DIR}/src/*.h
-    ${CMAKE_SOURCE_DIR}/src/*.vs
-    ${CMAKE_SOURCE_DIR}/src/*.fs
+# 定义STB_IMAGE_IMPLEMENTATION来生成实现
+set(STB_SOURCE
+    ${CMAKE_SOURCE_DIR}/src/stb_image/stb_image_wrapper.cpp  # 新增一个包装文件，见下方说明
 )
 
-file(GLOB_RECURSE SHADERS
-    ${CMAKE_SOURCE_DIR}/src/Shader/*.h
-    ${CMAKE_SOURCE_DIR}/src/Shader/*.vs  # 顶点着色器
-    ${CMAKE_SOURCE_DIR}/src/Shader/*.fs  # 片段着色器
-)
-
-file(GLOB_RECURSE STRUCT
-    ${CMAKE_SOURCE_DIR}/src/Struct/*.h
-)
-
-file(GLOB CAMERA
-    ${CMAKE_SOURCE_DIR}/src/Camera/*.h
+set(glad_SOURCE_DIR
+    ${CMAKE_SOURCE_DIR}/build/_deps/glad
 )
 
 # 创建可执行文件
 add_executable(${PROJECT_NAME} 
-    ${PROJECT_SOURCES} 
+    ${CMAKE_SOURCE_DIR}/src/main.cpp
     ${IMGUI_SOURCES}
+    ${STB_SOURCE} 
+    ${glad_SOURCE_DIR}/src/glad.c
 )
 
-target_link_options(${PROJECT_NAME} PRIVATE -mconsole)
-
-# 包含目录：添加OpenGL自动识别的头文件路径
+# ===================== 包含目录配置 =====================
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
-    ${imgui_SOURCE_DIR}
-    ${imgui_SOURCE_DIR}/backends
-    ${glm_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/include          # 项目自有头文件
+    ${imgui_SOURCE_DIR}                  # ImGui核心头文件
+    ${imgui_SOURCE_DIR}/backends         # ImGui后端头文件
+    ${glm_SOURCE_DIR}                    # GLM头文件
+    ${CMAKE_SOURCE_DIR}/src/stb_image    # stb头文件
+    ${assimp_SOURCE_DIR}/include         # Assimp头文件
+    ${glad_SOURCE_DIR}/include           # Glad头文件
 )
 
-# 链接库
+# ===================== 链接库配置 =====================
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    OpenGL::GL  # OpenGL核心库
-    glfw        # GLFW库
-    glu32.lib
-    opengl32.lib
-    glm::glm
+    OpenGL::GL          # OpenGL核心库
+    glfw                # GLFW库
+    glm::glm            # GLM库
+    assimp::assimp      # Assimp库
 )
 
-# 设置编译定义
+# ===================== 编译定义 =====================
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-    IMGUI_IMPL_OPENGL_LOADER_GLAD
+    IMGUI_IMPL_OPENGL_LOADER_GLAD    # ImGui使用Glad加载OpenGL
+    _HAS_STD_BYTE=0                  # 解决byte歧义
+    NOMINMAX                         # 避免Windows min/max宏冲突
 )
 
-# 复制 DLL 文件
+# ===================== 后置构建命令 =====================
+# 复制GLFW DLL
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different
     $<TARGET_FILE:glfw>
     $<TARGET_FILE_DIR:${PROJECT_NAME}>
 )
 
+# 复制 Assimp DLL
+add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    $<TARGET_FILE:assimp>
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>
+)
+
+# 复制 Shader文件 
+set(SHADERS
+    ${CMAKE_SOURCE_DIR}/include/Shader/lightShader.fs
+    ${CMAKE_SOURCE_DIR}/include/Shader/lightShader.vs
+    ${CMAKE_SOURCE_DIR}/include/Shader/Shader.fs
+    ${CMAKE_SOURCE_DIR}/include/Shader/Shader.vs
+)
 foreach(SHADER ${SHADERS})
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD 
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
@@ -139,15 +171,3 @@ foreach(SHADER ${SHADERS})
         $<TARGET_FILE_DIR:${PROJECT_NAME}>
     )
 endforeach(SHADER)
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD 
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${STRUCT} 
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>
-)
-
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD 
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${CAMERA} 
-    $<TARGET_FILE_DIR:${PROJECT_NAME}>
-)

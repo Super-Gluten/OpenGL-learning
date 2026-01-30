@@ -166,6 +166,5 @@ venv/
 env/
 .dockerignore
 .docker/
-include/KHR/khrplatform.h
-src/glad.c
-src/stb_image.h
+
+Model/

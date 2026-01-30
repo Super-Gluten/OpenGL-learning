@@ -4,6 +4,8 @@
 #include <glm/glm.hpp>
 #include <glad/glad.h>
 
+#define MAX_BONE_INFLUENCE 4
+
 // 顶点数据结构 - 使用glm类型便于计算，但存储为连续内存
 struct Vertex {
     // 数据成员 - 确保内存连续布局
@@ -11,6 +13,11 @@ struct Vertex {
     glm::vec3 normal;       // 顶点法向量（用于光照计算）
     glm::vec2 texCoord;     // 纹理坐标（u, v）
     glm::vec3 color;        // 顶点颜色
+        
+    glm::vec3 tangent;      // tangent
+    glm::vec3 bitangent;    // bitangent
+	int m_BoneIDs[MAX_BONE_INFLUENCE];  // bone indexes which will influence this vertex
+	float m_Weights[MAX_BONE_INFLUENCE];// weights from each bone
     
     // 默认构造函数
     Vertex() : position(0.0f), normal(0.0f, 0.0f, 1.0f), texCoord(0.0f), color(0.0f) {}
@@ -65,8 +72,27 @@ struct Vertex {
     static size_t texCoordOffset() {
         return offsetof(Vertex, texCoord);
     }
+    // 获取顶点颜色属性的偏移量
     static size_t colorOffset() {
         return offsetof(Vertex, color);
+    }
+
+    // 获取切线属性的偏移量
+    static size_t tangentOffset() {
+        return offsetof(Vertex, tangent);
+    }
+    // 获取副切线属性的偏移量
+    static size_t bitangentOffset() {
+        return offsetof(Vertex, bitangent);
+    }
+
+    
+    static size_t m_BoneIDsOffset() {
+        return offsetof(Vertex, m_BoneIDs);
+    }
+    // 获取副切线属性的偏移量
+    static size_t m_WeightsOffset() {
+        return offsetof(Vertex, m_Weights);
     }
 };
 
