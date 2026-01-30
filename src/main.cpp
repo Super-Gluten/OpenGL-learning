@@ -210,12 +210,10 @@ int main()
     unsigned int cubeTexture  = loadTexture(IMAGE_PATH("marble.jpg"));
     unsigned int floorTexture = loadTexture(IMAGE_PATH("metal.png"));
 
-    // 开启深度测试
-    glEnable(GL_DEPTH_TEST);
-    // glDepthFunc(GL_ALWAYS);
-
     Shader shader("depthShader.vs", "Shader.fs");
+    Shader singleColorShader("depthShader.vs", "shaderSingleColor.fs");
     shader.use();
+    shader.setInt("texture1", 0);
 
     // 渲染主循环
     // -----------
@@ -231,27 +229,28 @@ int main()
 
         // render
         // ------
-        glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        glEnable(GL_STENCIL_TEST);
+        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
-        shader.use();
+        glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+        
+        // 矩阵的设定
         glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
         glm::mat4 view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.zoom_), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+
+        shader.use();
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
-
-        // cubes
-        glBindVertexArray(cubeVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, cubeTexture); 	
-        model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
-        shader.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
-        shader.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        
+        // 不让地板更新我的模版缓冲区
+        glStencilMask(0x00);
 
         // floor
         glBindVertexArray(planeVAO);
@@ -259,6 +258,58 @@ int main()
         shader.setMat4("model", glm::mat4(1.0f));
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
+
+
+        // 启用模版写入
+        glStencilFunc(GL_ALWAYS, 1, 0xFF);
+        glStencilMask(0xFF);
+
+        // 在模版测试中第一次绘制物体两个物体，并把模版缓冲更新为 1
+        shader.use();
+        glBindVertexArray(cubeVAO);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, cubeTexture); 
+        
+        shader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+        shader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // 更新为模版值不为1的部分才绘制，同时禁用模版写入
+        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+        glStencilMask(0x00);
+
+        // 禁用深度测试
+        glDisable(GL_DEPTH_TEST);
+
+        // 使用一个不同的片段着色器，输出一个单独的（边框）颜色
+        // 再次进行绘制，这次绘制边框
+        
+        singleColorShader.use();
+        singleColorShader.setMat4("view", view);
+        singleColorShader.setMat4("projection", projection);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+        model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
+        singleColorShader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+        model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
+        singleColorShader.setMat4("model", model);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        glBindVertexArray(0);
+
+        // 再次启用模版写入和深度测试，回到原状态
+        glStencilMask(0xFF);
+        glEnable(GL_DEPTH_TEST);
+
 
         // glfw: 交换缓冲区并拉取 IO 事件
         // -------------------------------------------------------------------------------
