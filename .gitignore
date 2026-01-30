@@ -134,9 +134,6 @@ temp_assets/
 *.fbx
 *.obj
 *.blend
-*.png
-*.jpg
-*.jpeg
 *.tga
 *.bmp
 *.hdr
