@@ -75,12 +75,13 @@ bool is_fill = true;
 bool is_renderLight = true;
 bool is_lightRotate = false;
 bool is_lightColorChange = false;
+bool is_renderBorder = true;
 
 int lastLState = GLFW_RELEASE;
 int lastEState = GLFW_RELEASE;
 int lastTState = GLFW_RELEASE;
 int lastCState = GLFW_RELEASE;
-
+int lastBState = GLFW_RELEASE;
 
 int main()
 {
@@ -121,6 +122,10 @@ int main()
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
+
+    // 启用混合绘制
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
@@ -190,12 +195,12 @@ int main()
         1.0f,  0.5f,  0.0f,  1.0f,  0.0f
     };
 
-    vector<glm::vec3> vegetation;
-    vegetation.push_back(glm::vec3(-1.5f,  0.0f, -0.48f));
-    vegetation.push_back(glm::vec3( 1.5f,  0.0f,  0.51f));
-    vegetation.push_back(glm::vec3( 0.0f,  0.0f,  0.7f));
-    vegetation.push_back(glm::vec3(-0.3f,  0.0f, -2.3f));
-    vegetation.push_back(glm::vec3( 0.5f,  0.0f, -0.6f));
+    vector<glm::vec3> windows;
+    windows.push_back(glm::vec3(-1.5f,  0.0f, -0.48f));
+    windows.push_back(glm::vec3( 1.5f,  0.0f,  0.51f));
+    windows.push_back(glm::vec3( 0.0f,  0.0f,  0.7f));
+    windows.push_back(glm::vec3(-0.3f,  0.0f, -2.3f));
+    windows.push_back(glm::vec3( 0.5f,  0.0f, -0.6f));
 
     // cube VAO
     unsigned int cubeVAO, cubeVBO;
@@ -223,12 +228,12 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glBindVertexArray(0);
 
-    // grass VAO
-    unsigned int vegetationVAO, vegetationVBO;
-    glGenVertexArrays(1, &vegetationVAO);
-    glGenBuffers(1, &vegetationVBO);
-    glBindVertexArray(vegetationVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, vegetationVBO);
+    // window VAO
+    unsigned int transparentVAO, transparentVBO;
+    glGenVertexArrays(1, &transparentVAO);
+    glGenBuffers(1, &transparentVBO);
+    glBindVertexArray(transparentVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, transparentVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), &transparentVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
@@ -240,7 +245,7 @@ int main()
     // -------------
     unsigned int cubeTexture  = loadTexture(IMAGE_PATH("marble.jpg"));
     unsigned int floorTexture = loadTexture(IMAGE_PATH("metal.png"));
-    unsigned int grassTexture = loadTexture(IMAGE_PATH("grass.png"));
+    unsigned int windowTexture = loadTexture(IMAGE_PATH("blending_transparent_window.png"));
 
     Shader shader("depthShader.vs", "Shader.fs");
     Shader singleColorShader("depthShader.vs", "shaderSingleColor.fs");
@@ -309,52 +314,61 @@ int main()
         shader.setMat4("model", model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
+        // window
+        glBindVertexArray(transparentVAO);
+        glBindTexture(GL_TEXTURE_2D, windowTexture);
+        std::multimap<float, glm::vec3> sorted;
+        for(unsigned int i = 0; i < windows.size(); i++) 
+        {
+            float distance = glm::length(camera.position_ - windows[i]);
+            sorted.insert(std::make_pair(distance, windows[i]));
+        }
 
-        // vegetation
-        glBindVertexArray(vegetationVAO);
-        glBindTexture(GL_TEXTURE_2D, grassTexture);
-        for(unsigned int i = 0; i < vegetation.size(); i++) 
+
+        for(auto iter = sorted.rbegin(); iter != sorted.rend(); iter++) 
         {
             model = glm::mat4(1.0f);
-            model = glm::translate(model, vegetation[i]);               
+            model = glm::translate(model, iter -> second);               
             shader.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 6);
         }
         
 
-        // 更新为模版值不为1的部分才绘制，同时禁用模版写入
-        glBindVertexArray(cubeVAO);
-        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-        glStencilMask(0x00);
+        if (is_renderBorder) {
+            // 更新为模版值不为1的部分才绘制，同时禁用模版写入
+            glBindVertexArray(cubeVAO);
+            glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
+            glStencilMask(0x00);
 
-        // 禁用深度测试
-        glDisable(GL_DEPTH_TEST);
+            // 禁用深度测试
+            glDisable(GL_DEPTH_TEST);
 
-        // 使用一个不同的片段着色器，输出一个单独的（边框）颜色
-        // 再次进行绘制，这次绘制边框
-        
-        singleColorShader.use();
-        singleColorShader.setMat4("view", view);
-        singleColorShader.setMat4("projection", projection);
+            // 使用一个不同的片段着色器，输出一个单独的（边框）颜色
+            // 再次进行绘制，这次绘制边框
+            
+            singleColorShader.use();
+            singleColorShader.setMat4("view", view);
+            singleColorShader.setMat4("projection", projection);
 
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
-        model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
-        singleColorShader.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+            model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
+            singleColorShader.setMat4("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
-        model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
-        singleColorShader.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+            model = glm::mat4(1.0f);
+            model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+            model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
+            singleColorShader.setMat4("model", model);
+            glDrawArrays(GL_TRIANGLES, 0, 36);
 
-        glBindVertexArray(0);
+            glBindVertexArray(0);
 
-        // 再次启用模版写入和深度测试，回到原状态
-        glStencilMask(0xFF);
-        glEnable(GL_DEPTH_TEST);
+            // 再次启用模版写入和深度测试，回到原状态
+            glStencilMask(0xFF);
+            glEnable(GL_DEPTH_TEST);
 
+        }
 
         // glfw: 交换缓冲区并拉取 IO 事件
         // -------------------------------------------------------------------------------
@@ -414,6 +428,11 @@ void processInput(GLFWwindow *window)
         }
     }
     lastCState = currentCState;
+
+    int currentBState = glfwGetKey(window, GLFW_KEY_B);
+    if (lastBState == GLFW_RELEASE && currentBState == GLFW_PRESS) {
+        is_renderBorder = !is_renderBorder;
+    }
 }
 
 // glfw: 每当窗口大小发生变化（由操作系统或用户自行调整）时，此回调函数就会执行。
@@ -471,6 +490,7 @@ void printOperationTips()
     std::cout << "  E - 切换光源是否显示" << std::endl;
     std::cout << "  T - 切换光源是否旋转" << std::endl;
     std::cout << "  C - 切换光源是否变色" << std::endl;
+    std::cout << "  B - 切换是否显示边框" << std::endl;
     std::cout << std::endl;
     
     std::cout << "其他:" << std::endl;
