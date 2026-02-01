@@ -76,12 +76,14 @@ bool is_renderLight = true;
 bool is_lightRotate = false;
 bool is_lightColorChange = false;
 bool is_renderBorder = true;
+bool is_faceCulling = false;
 
 int lastLState = GLFW_RELEASE;
 int lastEState = GLFW_RELEASE;
 int lastTState = GLFW_RELEASE;
 int lastCState = GLFW_RELEASE;
 int lastBState = GLFW_RELEASE;
+int lastQState = GLFW_RELEASE;
 
 int main()
 {
@@ -130,48 +132,54 @@ int main()
     // set up vertex data (and buffer(s)) and configure vertex attributes
     // ------------------------------------------------------------------
     float cubeVertices[] = {
-        // positions          // texture Coords
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
+        // Back face
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // Bottom-left
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right
+         0.5f, -0.5f, -0.5f,  1.0f, 0.0f, // bottom-right 
 
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right
+        -0.5f, -0.5f, -0.5f,  0.0f, 0.0f, // bottom-left
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
+        // Front face
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // top-right
 
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+         0.5f,  0.5f,  0.5f,  1.0f, 1.0f, // top-right
+        -0.5f,  0.5f,  0.5f,  0.0f, 1.0f, // top-left
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left
+        // Left face
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-right
+        -0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-left
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-left
 
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-left
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-right
+        -0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-right
+        // Right face
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-left
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-right
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right     
 
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
+         0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // bottom-right
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // top-left
+         0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-left     
+        // Bottom face
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // top-right
+         0.5f, -0.5f, -0.5f,  1.0f, 1.0f, // top-left
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-left
 
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-         0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-         0.5f,  0.5f,  0.5f,  1.0f, 0.0f,
-        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f,
-        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f
+         0.5f, -0.5f,  0.5f,  1.0f, 0.0f, // bottom-left
+        -0.5f, -0.5f,  0.5f,  0.0f, 0.0f, // bottom-right
+        -0.5f, -0.5f, -0.5f,  0.0f, 1.0f, // top-right
+        // Top face
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+         0.5f,  0.5f, -0.5f,  1.0f, 1.0f, // top-right    
+         
+         0.5f,  0.5f,  0.5f,  1.0f, 0.0f, // bottom-right
+        -0.5f,  0.5f, -0.5f,  0.0f, 1.0f, // top-left
+        -0.5f,  0.5f,  0.5f,  0.0f, 0.0f  // bottom-left        
     };
     float planeVertices[] = {
         // positions          // texture Coords (note we set these higher than 1 (together with GL_REPEAT as texture wrapping mode). this will cause the floor texture to repeat)
@@ -252,6 +260,8 @@ int main()
     shader.use();
     shader.setInt("texture1", 0);
 
+    printOperationTips();
+
     // 渲染主循环
     // -----------
     while (!glfwWindowShouldClose(window))
@@ -278,7 +288,6 @@ int main()
         
         // 矩阵的设定
         glm::mat4 model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
         glm::mat4 view = camera.GetViewMatrix();
         glm::mat4 projection = glm::perspective(glm::radians(camera.zoom_), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
@@ -302,17 +311,29 @@ int main()
         glStencilMask(0xFF);
 
         // 在模版测试中第一次绘制物体两个物体，并把模版缓冲更新为 1
+        // cube
+
+        // 启用正面剔除
+        if (is_faceCulling) {
+            glEnable(GL_CULL_FACE);
+            glCullFace(GL_FRONT);
+            glFrontFace(GL_CCW);
+        }
+
         shader.use();
         glBindVertexArray(cubeVAO);
         glBindTexture(GL_TEXTURE_2D, cubeTexture); 
-        
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-1.0f, 0.05f, -1.0f));
         shader.setMat4("model", model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+        model = glm::translate(model, glm::vec3(2.0f, 0.05f, 0.0f));
         shader.setMat4("model", model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        glDisable(GL_CULL_FACE);
 
         // window
         glBindVertexArray(transparentVAO);
@@ -351,13 +372,13 @@ int main()
             singleColorShader.setMat4("projection", projection);
 
             model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(-1.0f, 0.0f, -1.0f));
+            model = glm::translate(model, glm::vec3(-1.0f, 0.05f, -1.0f));
             model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
             singleColorShader.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 36);
 
             model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(2.0f, 0.0f, 0.0f));
+            model = glm::translate(model, glm::vec3(2.0f, 0.05f, 0.0f));
             model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
             singleColorShader.setMat4("model", model);
             glDrawArrays(GL_TRIANGLES, 0, 36);
@@ -433,6 +454,13 @@ void processInput(GLFWwindow *window)
     if (lastBState == GLFW_RELEASE && currentBState == GLFW_PRESS) {
         is_renderBorder = !is_renderBorder;
     }
+    lastBState = currentBState;
+
+    int currentQState = glfwGetKey(window, GLFW_KEY_Q);
+    if (lastQState == GLFW_RELEASE && currentQState == GLFW_PRESS) {
+        is_faceCulling = !is_faceCulling;
+    }
+    lastQState = currentQState;
 }
 
 // glfw: 每当窗口大小发生变化（由操作系统或用户自行调整）时，此回调函数就会执行。
@@ -486,11 +514,12 @@ void printOperationTips()
     std::cout << std::endl;
     
     std::cout << "功能切换:" << std::endl;
-    std::cout << "  L - 切换填充模式(线框/填充)" << std::endl;
-    std::cout << "  E - 切换光源是否显示" << std::endl;
-    std::cout << "  T - 切换光源是否旋转" << std::endl;
-    std::cout << "  C - 切换光源是否变色" << std::endl;
+    // std::cout << "  L - 切换填充模式(线框/填充)" << std::endl;
+    // std::cout << "  E - 切换光源是否显示" << std::endl;
+    // std::cout << "  T - 切换光源是否旋转" << std::endl;
+    // std::cout << "  C - 切换光源是否变色" << std::endl;
     std::cout << "  B - 切换是否显示边框" << std::endl;
+    std::cout << "  Q - 切换是否正面剔除" << std::endl;
     std::cout << std::endl;
     
     std::cout << "其他:" << std::endl;
