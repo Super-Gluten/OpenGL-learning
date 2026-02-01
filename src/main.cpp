@@ -192,15 +192,15 @@ int main()
          5.0f, -0.5f, -5.0f,  2.0f, 2.0f								
     };
 
-    float transparentVertices[] = {
-        // positions         // texture Coords (swapped y coordinates because texture is flipped upside down)
-        0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
-        0.0f, -0.5f,  0.0f,  0.0f,  1.0f,
-        1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
+    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
 
-        0.0f,  0.5f,  0.0f,  0.0f,  0.0f,
-        1.0f, -0.5f,  0.0f,  1.0f,  1.0f,
-        1.0f,  0.5f,  0.0f,  1.0f,  0.0f
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
     };
 
     vector<glm::vec3> windows;
@@ -236,31 +236,58 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glBindVertexArray(0);
 
-    // window VAO
-    unsigned int transparentVAO, transparentVBO;
-    glGenVertexArrays(1, &transparentVAO);
-    glGenBuffers(1, &transparentVBO);
-    glBindVertexArray(transparentVAO);
-    glBindBuffer(GL_ARRAY_BUFFER, transparentVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(transparentVertices), &transparentVertices, GL_STATIC_DRAW);
+    // screen quad VAO
+    unsigned int quadVAO, quadVBO;
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-    glBindVertexArray(0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
 
+    
     // load textures
     // -------------
-    unsigned int cubeTexture  = loadTexture(IMAGE_PATH("marble.jpg"));
+    unsigned int cubeTexture  = loadTexture(IMAGE_PATH("container.jpg"));
     unsigned int floorTexture = loadTexture(IMAGE_PATH("metal.png"));
-    unsigned int windowTexture = loadTexture(IMAGE_PATH("blending_transparent_window.png"));
 
     Shader shader("depthShader.vs", "Shader.fs");
-    Shader singleColorShader("depthShader.vs", "shaderSingleColor.fs");
+    Shader screenShader("frameBuffer.vs", "frameBuffer.fs");
     shader.use();
     shader.setInt("texture1", 0);
 
-    printOperationTips();
+    // framebuffer configuration
+    unsigned int framebuffer;
+    glGenFramebuffers(1, &framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+
+    // create a color attachment texture
+    unsigned int textureColorBuffer;
+    glGenTextures(1, &textureColorBuffer);
+    glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, SCR_WIDTH, SCR_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, textureColorBuffer, 0);
+
+    // create a renderbuffer object for depth and stencil attachement 
+    unsigned int rbo;
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, SCR_WIDTH, SCR_HEIGHT);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+    // check 
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // printOperationTips();
 
     // 渲染主循环
     // -----------
@@ -276,14 +303,14 @@ int main()
 
         // render
         // ------
+
+        // 阶段一：
+        // 进行离屏渲染，将立方体和结果渲染到 framebuffer 上
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
         glEnable(GL_DEPTH_TEST);
-        glDepthFunc(GL_LESS);
-        glEnable(GL_STENCIL_TEST);
-        glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-        glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         
         // 矩阵的设定
@@ -306,13 +333,7 @@ int main()
         glDrawArrays(GL_TRIANGLES, 0, 6);
         glBindVertexArray(0);
 
-        // 启用模版写入
-        glStencilFunc(GL_ALWAYS, 1, 0xFF);
-        glStencilMask(0xFF);
-
-        // 在模版测试中第一次绘制物体两个物体，并把模版缓冲更新为 1
         // cube
-
         // 启用正面剔除
         if (is_faceCulling) {
             glEnable(GL_CULL_FACE);
@@ -335,67 +356,33 @@ int main()
 
         glDisable(GL_CULL_FACE);
 
-        // window
-        glBindVertexArray(transparentVAO);
-        glBindTexture(GL_TEXTURE_2D, windowTexture);
-        std::multimap<float, glm::vec3> sorted;
-        for(unsigned int i = 0; i < windows.size(); i++) 
-        {
-            float distance = glm::length(camera.position_ - windows[i]);
-            sorted.insert(std::make_pair(distance, windows[i]));
-        }
 
+        // 阶段二：
+        // 将帧缓冲场景绘制到主屏幕上
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
 
-        for(auto iter = sorted.rbegin(); iter != sorted.rend(); iter++) 
-        {
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, iter -> second);               
-            shader.setMat4("model", model);
-            glDrawArrays(GL_TRIANGLES, 0, 6);
-        }
-        
-
-        if (is_renderBorder) {
-            // 更新为模版值不为1的部分才绘制，同时禁用模版写入
-            glBindVertexArray(cubeVAO);
-            glStencilFunc(GL_NOTEQUAL, 1, 0xFF);
-            glStencilMask(0x00);
-
-            // 禁用深度测试
-            glDisable(GL_DEPTH_TEST);
-
-            // 使用一个不同的片段着色器，输出一个单独的（边框）颜色
-            // 再次进行绘制，这次绘制边框
-            
-            singleColorShader.use();
-            singleColorShader.setMat4("view", view);
-            singleColorShader.setMat4("projection", projection);
-
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(-1.0f, 0.05f, -1.0f));
-            model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
-            singleColorShader.setMat4("model", model);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-
-            model = glm::mat4(1.0f);
-            model = glm::translate(model, glm::vec3(2.0f, 0.05f, 0.0f));
-            model = glm::scale(model, glm::vec3(1.1f, 1.1f, 1.1f));
-            singleColorShader.setMat4("model", model);
-            glDrawArrays(GL_TRIANGLES, 0, 36);
-
-            glBindVertexArray(0);
-
-            // 再次启用模版写入和深度测试，回到原状态
-            glStencilMask(0xFF);
-            glEnable(GL_DEPTH_TEST);
-
-        }
+        screenShader.use();
+        glBindVertexArray(quadVAO);
+        glDisable(GL_DEPTH_TEST);
+        glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
         // glfw: 交换缓冲区并拉取 IO 事件
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    glDeleteVertexArrays(1, &cubeVAO);
+    glDeleteVertexArrays(1, &planeVAO);
+    glDeleteVertexArrays(1, &quadVAO);
+    glDeleteBuffers(1, &cubeVBO);
+    glDeleteBuffers(1, &planeVBO);
+    glDeleteBuffers(1, &quadVBO);
+    glDeleteRenderbuffers(1, &rbo);
+    glDeleteFramebuffers(1, &framebuffer);
 
     // glfw: 终止
     // -----------------
