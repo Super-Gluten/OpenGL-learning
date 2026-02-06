@@ -49,6 +49,13 @@ unsigned int loadCubemap(vector<std::string> faces);
 const unsigned int SCR_WIDTH = 800;
 const unsigned int SCR_HEIGHT = 600;
 
+// 折射率设置
+const float REFRACTIVE_INDEX_WATER  = 1.33f;
+const float REFRACTIVE_INDEX_AIR    = 1.00f;
+const float REFRACTIVE_INDEX_ICE    = 1.309f;
+const float REFRACTIVE_INDEX_GLASS  = 1.52f;
+const float REFRACTIVE_INDEX_DIAMOND= 2.42f;
+
 // camera 设置
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -332,12 +339,17 @@ int main()
     };
     unsigned int skyboxTexture = loadCubemap(faces);
 
-    Shader shader("reflectShader.vs", "reflectShader.fs");
+    // stbi_set_flip_vertically_on_load(true);
+    // // load model
+    // Model ourModel(MODEL_PATH("nanosuit_reflection/nanosuit.obj"));
+
+    Shader shader("refractShader.vs", "refractShader.fs");
     Shader screenShader("frameBuffer.vs", "frameBuffer.fs");
     Shader skyboxShader("skyboxShader.vs", "skyboxShader.fs");
 
     shader.use();
-    shader.setInt("texture1", 0);
+    shader.setInt("skybox", 0);
+    shader.setFloat("refractiveIndex", REFRACTIVE_INDEX_GLASS);
 
     skyboxShader.use();
     skyboxShader.setInt("skybox", 0);
@@ -404,17 +416,12 @@ int main()
         shader.use();
         shader.setMat4("view", view);
         shader.setMat4("projection", projection);
+        shader.setMat4("model", model);
+        shader.setMat3("normalMatrix", glm::mat3(glm::transpose(glm::inverse(model))));
 
         // cube
-        // 启用正面剔除
-        if (is_faceCulling) {
-            glEnable(GL_CULL_FACE);
-            glCullFace(GL_FRONT);
-            glFrontFace(GL_CCW);
-        }
+        shader.setVec3("cameraPos", camera.position_);
 
-        shader.use();
-        shader.setVec3("cameraPos", camera.position_),
         glBindVertexArray(cubeVAO);
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
@@ -429,12 +436,8 @@ int main()
         shader.setMat4("model", model);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         
-        glBindTexture(GL_TEXTURE_2D, 0);
+        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
         glBindVertexArray(0);
-
-        if (is_faceCulling) {
-            glDisable(GL_CULL_FACE);
-        }
 
 
         // skybox
@@ -607,7 +610,7 @@ void printOperationTips()
     // std::cout << "  T - 切换光源是否旋转" << std::endl;
     // std::cout << "  C - 切换光源是否变色" << std::endl;
     // std::cout << "  B - 切换是否显示边框" << std::endl;
-    std::cout << "  Q - 切换是否正面剔除" << std::endl;
+    // std::cout << "  Q - 切换是否正面剔除" << std::endl;
     std::cout << std::endl;
     
     std::cout << "其他:" << std::endl;

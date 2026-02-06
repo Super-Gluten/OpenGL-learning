@@ -104,7 +104,7 @@ set(STB_SOURCE
     ${CMAKE_SOURCE_DIR}/src/stb_image/stb_image_wrapper.cpp  # 新增一个包装文件，见下方说明
 )
 
-set(glad_SOURCE_DIR
+set(GLAD_SOURCE_DIR
     ${CMAKE_SOURCE_DIR}/build/_deps/glad
 )
 
@@ -113,7 +113,7 @@ add_executable(${PROJECT_NAME}
     ${CMAKE_SOURCE_DIR}/src/main.cpp
     ${IMGUI_SOURCES}
     ${STB_SOURCE} 
-    ${glad_SOURCE_DIR}/src/glad.c
+    ${GLAD_SOURCE_DIR}/src/glad.c
 )
 
 # ===================== 包含目录配置 =====================
@@ -124,7 +124,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${glm_SOURCE_DIR}                    # GLM头文件
     ${CMAKE_SOURCE_DIR}/src/stb_image    # stb头文件
     ${assimp_SOURCE_DIR}/include         # Assimp头文件
-    ${glad_SOURCE_DIR}/include           # Glad头文件
+    ${GLAD_SOURCE_DIR}/include           # Glad头文件
 )
 
 # ===================== 链接库配置 =====================
@@ -158,11 +158,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 )
 
 # 复制 Shader文件 
-set(SHADERS
-    ${CMAKE_SOURCE_DIR}/include/Shader/lightShader.fs
-    ${CMAKE_SOURCE_DIR}/include/Shader/lightShader.vs
-    ${CMAKE_SOURCE_DIR}/include/Shader/Shader.fs
-    ${CMAKE_SOURCE_DIR}/include/Shader/Shader.vs
+file(GLOB SHADER
+    ${CMAKE_SOURCE_DIR}/include/Shader/*.vs
+    ${CMAKE_SOURCE_DIR}/include/Shader/*.fs
 )
 foreach(SHADER ${SHADERS})
     add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD 
