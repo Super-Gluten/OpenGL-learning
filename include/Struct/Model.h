@@ -177,16 +177,50 @@ private:
 
         // 1. diffuse maps
         vector<Texture> diffuseMaps = loadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse");
-        textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+        
         // 2. specular maps
         vector<Texture> specularMaps = loadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular");
-        textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+        
         // 3. normal maps
         std::vector<Texture> normalMaps = loadMaterialTextures(material, aiTextureType_HEIGHT, "texture_normal");
-        textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+        
         // 4. height maps
         std::vector<Texture> heightMaps = loadMaterialTextures(material, aiTextureType_AMBIENT, "texture_height");
-        textures.insert(textures.end(), heightMaps.begin(), heightMaps.end());
+        
+        // 5. reflect maps
+        std::vector<Texture> reflectMaps = loadMaterialTextures(material, aiTextureType_REFLECTION, "texture_reflect");
+        
+        // 压入 textures 
+        // 处理 diffuse
+        for (auto& tex : diffuseMaps) {
+            if(isReflectionTexture(tex.path)) {
+                // 设置为反射贴图
+                tex.type = "texture_reflection";
+                reflectMaps.push_back(tex);
+            } else {
+                // 正常压入 textures 中，作为 texture_diffuse
+                textures.push_back(tex);
+            }
+        }
+
+        textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
+        textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
+        // 处理 ambient 
+        for (auto& tex : heightMaps) {
+            if(isReflectionTexture(tex.path)) {
+                // 设置为反射贴图
+                tex.type = "texture_reflection";
+                reflectMaps.push_back(tex);
+            } else {
+                // 正常压入 textures 中，作为 texture_height
+                textures.push_back(tex);
+            }
+        }
+        
+        if (reflectMaps.empty()) {
+            std::cerr << "Reflect Maps is empty" << std::endl;
+        }
+        textures.insert(textures.end(), reflectMaps.begin(), reflectMaps.end());
         
         // return a mesh object created from the extracted mesh data
         return Mesh(vertices, indices, textures);
@@ -223,6 +257,20 @@ private:
             }
         }
         return textures;
+    }
+
+    // 辅助函数：检查纹理文件名是否表示反射贴图
+    bool isReflectionTexture(const string& filename) {
+        string lowerFilename = filename;
+        transform(lowerFilename.begin(), lowerFilename.end(), lowerFilename.begin(), ::tolower);
+        
+        // 检查文件名是否包含反射相关关键词
+        return (lowerFilename.find("reflect") != string::npos) ||
+               (lowerFilename.find("refl") != string::npos) ||
+               (lowerFilename.find("mirror") != string::npos) ||
+               (lowerFilename.find("metal") != string::npos) ||
+               (lowerFilename.find("chrome") != string::npos) ||
+               (lowerFilename.find("reflection") != string::npos);
     }
 };
 

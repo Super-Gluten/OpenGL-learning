@@ -200,10 +200,11 @@ struct Mesh {
         }
 
         // 四个独立的纹理计数器
-        unsigned int cnt_diffuse  = 1;
-        unsigned int cnt_specular = 1;
-        unsigned int cnt_normal   = 1;
-        unsigned int cnt_height   = 1;
+        unsigned int cnt_diffuse    = 1;
+        unsigned int cnt_specular   = 1;
+        unsigned int cnt_normal     = 1;
+        unsigned int cnt_height     = 1;
+        unsigned int cnt_reflection = 1;
         
         for (int i = 0; i < textures.size(); i++) {
             glActiveTexture(GL_TEXTURE0 + i);
@@ -216,8 +217,10 @@ struct Mesh {
                 number = std::to_string(cnt_specular++); 
             else if(name == "texture_normal")
                 number = std::to_string(cnt_normal++); 
-             else if(name == "texture_height")
+            else if(name == "texture_height")
                 number = std::to_string(cnt_height++); 
+            else if(name == "texture_reflection");
+                number = std::to_string(cnt_reflection++);
 
             std::string uniformName = textures[i].type + number;
 
