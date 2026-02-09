@@ -216,7 +216,7 @@ int main()
          1.0f,  1.0f,  1.0f, 1.0f
     };
 
-        float skyboxVertices[] = {
+    float skyboxVertices[] = {
         // positions          
         -1.0f,  1.0f, -1.0f,
         -1.0f, -1.0f, -1.0f,
@@ -343,17 +343,6 @@ int main()
     // // load model
     // Model ourModel(MODEL_PATH("nanosuit_reflection/nanosuit.obj"));
 
-    Shader shader("refractShader.vs", "refractShader.fs");
-    Shader screenShader("frameBuffer.vs", "frameBuffer.fs");
-    Shader skyboxShader("skyboxShader.vs", "skyboxShader.fs");
-
-    shader.use();
-    shader.setInt("skybox", 0);
-    shader.setFloat("refractiveIndex", REFRACTIVE_INDEX_GLASS);
-
-    skyboxShader.use();
-    skyboxShader.setInt("skybox", 0);
-
     // framebuffer configuration
     unsigned int framebuffer;
     glGenFramebuffers(1, &framebuffer);
@@ -382,6 +371,45 @@ int main()
         cout << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << endl;
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    // uniform buffer
+    // 1. create uniform buffer object and allocate memory
+    unsigned int uboMatrices;
+    glGenBuffers(1, &uboMatrices);
+    
+    glBindBuffer(GL_UNIFORM_BUFFER, uboMatrices);
+    glBufferData(GL_UNIFORM_BUFFER, 2 * sizeof(glm::mat4), NULL, GL_STATIC_DRAW);
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+    glBindBufferRange(GL_UNIFORM_BUFFER, 0, uboMatrices, 0, 2 * sizeof(glm::mat4));
+
+
+    // create Shader
+    // 2. bind Shader's uniform block to binding point
+    // 将 各着色器的 uniform 块绑定到绑定点 0 上
+    Shader shaderRed("uniformBufferShader.vs", "Shader_Red.fs");
+    Shader shaderGreen("uniformBufferShader.vs", "Shader_Green.fs");
+    Shader shaderBlue("uniformBufferShader.vs", "Shader_Blue.fs");
+    Shader shaderYellow("uniformBufferShader.vs", "Shader_Other.fs");
+
+    unsigned int uniformBlockIndexRed    = glGetUniformBlockIndex(shaderRed.ID, "Matrices");
+    unsigned int uniformBlockIndexGreen  = glGetUniformBlockIndex(shaderGreen.ID, "Matrices");
+    unsigned int uniformBlockIndexBlue   = glGetUniformBlockIndex(shaderBlue.ID, "Matrices");
+    unsigned int uniformBlockIndexYellow = glGetUniformBlockIndex(shaderYellow.ID, "Matrices");  
+
+    glUniformBlockBinding(shaderRed.ID,    uniformBlockIndexRed, 0);
+    glUniformBlockBinding(shaderGreen.ID,  uniformBlockIndexGreen, 0);
+    glUniformBlockBinding(shaderBlue.ID,   uniformBlockIndexBlue, 0);
+    glUniformBlockBinding(shaderYellow.ID, uniformBlockIndexYellow, 0);
+
+
+    // 3. bind the uniform buffer to binding point
+    // 4. add data to the uniform buffer
+    // 填充了投影矩阵到 uniform 缓冲区中，并且将其绑定到绑定点 0 上
+    glm::mat4 projection = glm::perspective(glm::radians(camera.zoom_), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
+    glBindBuffer(GL_UNIFORM_BUFFER, uboMatrices);
+    glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(projection));
+    glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
     printOperationTips();
 
     // 渲染主循环
@@ -407,57 +435,76 @@ int main()
         glClearColor(0.05f, 0.05f, 0.05f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        
-        // 矩阵的设定
-        glm::mat4 model = glm::mat4(1.0f);
+        // view 矩阵设定
+        // 3. bind the uniform buffer to binding point
+        // 4. add data to the uniform buffer
         glm::mat4 view = camera.GetViewMatrix();
-        glm::mat4 projection = glm::perspective(glm::radians(camera.zoom_), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
-
-        shader.use();
-        shader.setMat4("view", view);
-        shader.setMat4("projection", projection);
-        shader.setMat4("model", model);
-        shader.setMat3("normalMatrix", glm::mat3(glm::transpose(glm::inverse(model))));
-
-        // cube
-        shader.setVec3("cameraPos", camera.position_);
+        glBindBuffer(GL_UNIFORM_BUFFER, uboMatrices);
+        glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(view));
+        glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
         glBindVertexArray(cubeVAO);
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
-        
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-1.0f, 0.05f, -1.0f));
-        shader.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        glm::mat4 model = glm::mat4(1.0f);
+        glm::mat4 normalMatrix = glm::mat4(1.0f);
 
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(2.0f, 0.05f, 0.0f));
-        shader.setMat4("model", model);
+        // Red cube
+        shaderRed.use();
+        model = glm::translate(model, glm::vec3(-0.75f, 0.75f, 0.0f));
+        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+        shaderRed.setMat4("model", model);
+        shaderRed.setMat4("normalMatrix", normalMatrix);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         
-        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
-        glBindVertexArray(0);
+
+        // Green cube
+        shaderGreen.use();
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.75f, 0.75f, 0.0f));
+        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+        shaderGreen.setMat4("model", model);
+        shaderGreen.setMat4("normalMatrix", normalMatrix);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
 
 
-        // skybox
-        // 禁用深度写入，以保证天空盒一定在其他物体之后
-        glDepthFunc(GL_LEQUAL);
+        // Blue cube
+        shaderBlue.use();
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(-0.75f, -0.75f, 0.0f));
+        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+        shaderBlue.setMat4("model", model);
+        shaderBlue.setMat4("normalMatrix", normalMatrix);
+        glDrawArrays(GL_TRIANGLES, 0, 36);
+        
 
-        skyboxShader.use();
-        view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
-        skyboxShader.setMat4("view", view);
-        skyboxShader.setMat4("projection", projection);
-        glActiveTexture(GL_TEXTURE0);
-        glBindVertexArray(skyboxVAO);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+        // Yellow cube
+        shaderYellow.use();
+        model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(0.75f, -0.75f, 0.0f));
+        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+        shaderYellow.setMat4("model", model);
+        shaderYellow.setMat4("normalMatrix", normalMatrix);
         glDrawArrays(GL_TRIANGLES, 0, 36);
 
         glBindVertexArray(0);
-        glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
 
-        // 重新启用深度写入
-        glDepthFunc(GL_LESS);
+        // // skybox
+        // // 禁用深度写入，以保证天空盒一定在其他物体之后
+        // glDepthFunc(GL_LEQUAL);
+
+        // skyboxShader.use();
+        // view = glm::mat4(glm::mat3(camera.GetViewMatrix()));
+        // skyboxShader.setMat4("view", view);
+        // skyboxShader.setMat4("projection", projection);
+        // glActiveTexture(GL_TEXTURE0);
+        // glBindVertexArray(skyboxVAO);
+        // glBindTexture(GL_TEXTURE_CUBE_MAP, skyboxTexture);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // glBindVertexArray(0);
+        // glBindTexture(GL_TEXTURE_CUBE_MAP, 0);
+
+        // // 重新启用深度写入
+        // glDepthFunc(GL_LESS);
 
         // // 阶段二：
         // // 将帧缓冲场景绘制到主屏幕上
@@ -601,7 +648,8 @@ void printOperationTips()
     
     std::cout << "视角控制:" << std::endl;
     std::cout << "  鼠标移动 - 转动视角" << std::endl;
-    std::cout << "  鼠标滚轮 - 缩放视野" << std::endl;
+    // 暂时取消了缩放
+    // std::cout << "  鼠标滚轮 - 缩放视野" << std::endl;
     std::cout << std::endl;
     
     std::cout << "功能切换:" << std::endl;
