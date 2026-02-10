@@ -161,9 +161,10 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 file(GLOB SHADER
     ${CMAKE_SOURCE_DIR}/include/Shader/*.vs
     ${CMAKE_SOURCE_DIR}/include/Shader/*.fs
+    ${CMAKE_SOURCE_DIR}/include/Shader/*.gs
 )
 foreach(SHADER ${SHADERS})
-    add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD 
+    add_custom_command(TARGET ${PROJECT_NAME} PRE_BUILD 
         COMMAND ${CMAKE_COMMAND} -E copy_if_different
         ${SHADER} 
         $<TARGET_FILE_DIR:${PROJECT_NAME}>

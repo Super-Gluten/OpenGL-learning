@@ -261,6 +261,14 @@ int main()
          1.0f, -1.0f,  1.0f
     };
 
+
+    float points[] = {
+        -0.5f,  0.5f, // 左上
+        0.5f,  0.5f, // 右上
+        0.5f, -0.5f, // 右下
+        -0.5f, -0.5f  // 左下
+    };
+
     vector<glm::vec3> windows;
     windows.push_back(glm::vec3(-1.5f,  0.0f, -0.48f));
     windows.push_back(glm::vec3( 1.5f,  0.0f,  0.51f));
@@ -308,7 +316,7 @@ int main()
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
-
+    glBindVertexArray(0);
 
     // skybox VAO
     unsigned int skyboxVAO, skyboxVBO;
@@ -319,8 +327,19 @@ int main()
     glBufferData(GL_ARRAY_BUFFER, sizeof(skyboxVertices), &skyboxVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glBindVertexArray(0);
     
-    
+    // point VAO
+    unsigned int pointVAO, pointVBO;
+    glGenVertexArrays(1, &pointVAO);
+    glGenBuffers(1, &pointVBO);
+    glBindVertexArray(pointVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(points), &points, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glBindVertexArray(0);
+
     // load textures
     // -------------
     // load 2D texture
@@ -384,22 +403,25 @@ int main()
 
 
     // create Shader
+
+    Shader shader("geometryShader.vs", "Shader_Red.fs", "point_To_line.gs");
+
     // 2. bind Shader's uniform block to binding point
     // 将 各着色器的 uniform 块绑定到绑定点 0 上
-    Shader shaderRed("uniformBufferShader.vs", "Shader_Red.fs");
-    Shader shaderGreen("uniformBufferShader.vs", "Shader_Green.fs");
-    Shader shaderBlue("uniformBufferShader.vs", "Shader_Blue.fs");
-    Shader shaderYellow("uniformBufferShader.vs", "Shader_Other.fs");
+    // Shader shaderRed("uniformBufferShader.vs", "Shader_Red.fs");
+    // Shader shaderGreen("uniformBufferShader.vs", "Shader_Green.fs");
+    // Shader shaderBlue("uniformBufferShader.vs", "Shader_Blue.fs");
+    // Shader shaderYellow("uniformBufferShader.vs", "Shader_Other.fs");
 
-    unsigned int uniformBlockIndexRed    = glGetUniformBlockIndex(shaderRed.ID, "Matrices");
-    unsigned int uniformBlockIndexGreen  = glGetUniformBlockIndex(shaderGreen.ID, "Matrices");
-    unsigned int uniformBlockIndexBlue   = glGetUniformBlockIndex(shaderBlue.ID, "Matrices");
-    unsigned int uniformBlockIndexYellow = glGetUniformBlockIndex(shaderYellow.ID, "Matrices");  
+    // unsigned int uniformBlockIndexRed    = glGetUniformBlockIndex(shaderRed.ID, "Matrices");
+    // unsigned int uniformBlockIndexGreen  = glGetUniformBlockIndex(shaderGreen.ID, "Matrices");
+    // unsigned int uniformBlockIndexBlue   = glGetUniformBlockIndex(shaderBlue.ID, "Matrices");
+    // unsigned int uniformBlockIndexYellow = glGetUniformBlockIndex(shaderYellow.ID, "Matrices");  
 
-    glUniformBlockBinding(shaderRed.ID,    uniformBlockIndexRed, 0);
-    glUniformBlockBinding(shaderGreen.ID,  uniformBlockIndexGreen, 0);
-    glUniformBlockBinding(shaderBlue.ID,   uniformBlockIndexBlue, 0);
-    glUniformBlockBinding(shaderYellow.ID, uniformBlockIndexYellow, 0);
+    // glUniformBlockBinding(shaderRed.ID,    uniformBlockIndexRed, 0);
+    // glUniformBlockBinding(shaderGreen.ID,  uniformBlockIndexGreen, 0);
+    // glUniformBlockBinding(shaderBlue.ID,   uniformBlockIndexBlue, 0);
+    // glUniformBlockBinding(shaderYellow.ID, uniformBlockIndexYellow, 0);
 
 
     // 3. bind the uniform buffer to binding point
@@ -443,49 +465,56 @@ int main()
         glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(view));
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-        glBindVertexArray(cubeVAO);
+        // glBindVertexArray(cubeVAO);
+        glBindVertexArray(pointVAO);
         glm::mat4 model = glm::mat4(1.0f);
         glm::mat4 normalMatrix = glm::mat4(1.0f);
 
-        // Red cube
-        shaderRed.use();
-        model = glm::translate(model, glm::vec3(-0.75f, 0.75f, 0.0f));
-        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
-        shaderRed.setMat4("model", model);
-        shaderRed.setMat4("normalMatrix", normalMatrix);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        
-
-        // Green cube
-        shaderGreen.use();
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.75f, 0.75f, 0.0f));
-        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
-        shaderGreen.setMat4("model", model);
-        shaderGreen.setMat4("normalMatrix", normalMatrix);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
-
-        // Blue cube
-        shaderBlue.use();
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(-0.75f, -0.75f, 0.0f));
-        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
-        shaderBlue.setMat4("model", model);
-        shaderBlue.setMat4("normalMatrix", normalMatrix);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-        
-
-        // Yellow cube
-        shaderYellow.use();
-        model = glm::mat4(1.0f);
-        model = glm::translate(model, glm::vec3(0.75f, -0.75f, 0.0f));
-        normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
-        shaderYellow.setMat4("model", model);
-        shaderYellow.setMat4("normalMatrix", normalMatrix);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
-
+        // Red point -> Red line by shader with Geometry Shader
+        shader.use();
+        glDrawArrays(GL_POINTS, 0, 4);
         glBindVertexArray(0);
+
+
+        // // Red cube
+        // shaderRed.use();
+        // model = glm::translate(model, glm::vec3(-0.75f, 0.75f, 0.0f));
+        // normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+        // shaderRed.setMat4("model", model);
+        // shaderRed.setMat4("normalMatrix", normalMatrix);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        
+
+        // // Green cube
+        // shaderGreen.use();
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, glm::vec3(0.75f, 0.75f, 0.0f));
+        // normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+        // shaderGreen.setMat4("model", model);
+        // shaderGreen.setMat4("normalMatrix", normalMatrix);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+
+
+        // // Blue cube
+        // shaderBlue.use();
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, glm::vec3(-0.75f, -0.75f, 0.0f));
+        // normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+        // shaderBlue.setMat4("model", model);
+        // shaderBlue.setMat4("normalMatrix", normalMatrix);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+        
+
+        // // Yellow cube
+        // shaderYellow.use();
+        // model = glm::mat4(1.0f);
+        // model = glm::translate(model, glm::vec3(0.75f, -0.75f, 0.0f));
+        // normalMatrix = glm::mat3(glm::transpose(glm::inverse(model)));
+        // shaderYellow.setMat4("model", model);
+        // shaderYellow.setMat4("normalMatrix", normalMatrix);
+        // glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        // glBindVertexArray(0);
 
         // // skybox
         // // 禁用深度写入，以保证天空盒一定在其他物体之后
@@ -528,10 +557,12 @@ int main()
     glDeleteVertexArrays(1, &planeVAO);
     glDeleteVertexArrays(1, &quadVAO);
     glDeleteVertexArrays(1, &skyboxVAO);
+    glDeleteVertexArrays(1, &pointVAO);
     glDeleteBuffers(1, &cubeVBO);
     glDeleteBuffers(1, &planeVBO);
     glDeleteBuffers(1, &quadVBO);
     glDeleteBuffers(1, &skyboxVBO);
+    glDeleteBuffers(1, &pointVBO);
     glDeleteRenderbuffers(1, &rbo);
     glDeleteFramebuffers(1, &framebuffer);
 
