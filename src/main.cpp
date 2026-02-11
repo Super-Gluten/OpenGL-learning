@@ -263,10 +263,10 @@ int main()
 
 
     float points[] = {
-        -0.5f,  0.5f, // 左上
-        0.5f,  0.5f, // 右上
-        0.5f, -0.5f, // 右下
-        -0.5f, -0.5f  // 左下
+        -0.5f,  0.5f, 1.0f, 0.0f, 0.0f, // 左上
+         0.5f,  0.5f, 0.0f, 1.0f, 0.0f, // 右上
+         0.5f, -0.5f, 0.0f, 0.0f, 1.0f, // 右下
+        -0.5f, -0.5f, 1.0f, 1.0f, 0.0f  // 左下
     };
 
     vector<glm::vec3> windows;
@@ -337,7 +337,9 @@ int main()
     glBindBuffer(GL_ARRAY_BUFFER, pointVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(points), &points, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(2 * sizeof(float)));
     glBindVertexArray(0);
 
     // load textures
@@ -404,7 +406,7 @@ int main()
 
     // create Shader
 
-    Shader shader("geometryShader.vs", "Shader_Red.fs", "point_To_line.gs");
+    Shader shader("geometryShader.vs", "geometryShader.fs", "point_To_house.gs");
 
     // 2. bind Shader's uniform block to binding point
     // 将 各着色器的 uniform 块绑定到绑定点 0 上
