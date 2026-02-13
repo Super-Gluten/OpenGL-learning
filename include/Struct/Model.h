@@ -217,9 +217,9 @@ private:
             }
         }
         
-        if (reflectMaps.empty()) {
-            std::cerr << "Reflect Maps is empty" << std::endl;
-        }
+        // if (reflectMaps.empty()) {
+        //     std::cerr << "Reflect Maps is empty" << std::endl;
+        // }
         textures.insert(textures.end(), reflectMaps.begin(), reflectMaps.end());
         
         // return a mesh object created from the extracted mesh data

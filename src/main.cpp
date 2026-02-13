@@ -56,6 +56,9 @@ const float REFRACTIVE_INDEX_ICE    = 1.309f;
 const float REFRACTIVE_INDEX_GLASS  = 1.52f;
 const float REFRACTIVE_INDEX_DIAMOND= 2.42f;
 
+// 几何着色器 相关设置
+const float EXPLODE_MAGNITUDE = 2.0f;
+
 // camera 设置
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 
@@ -362,6 +365,7 @@ int main()
 
     // stbi_set_flip_vertically_on_load(true);
     // // load model
+    Model ourModel(MODEL_PATH("backpack/backpack.obj"));
     // Model ourModel(MODEL_PATH("nanosuit_reflection/nanosuit.obj"));
 
     // framebuffer configuration
@@ -406,7 +410,9 @@ int main()
 
     // create Shader
 
-    Shader shader("geometryShader.vs", "geometryShader.fs", "point_To_house.gs");
+    Shader shader("geometryShader.vs", "geometryShader.fs", "explode.gs");
+    shader.use();
+    shader.setFloat("explode_magnitude", EXPLODE_MAGNITUDE);
 
     // 2. bind Shader's uniform block to binding point
     // 将 各着色器的 uniform 块绑定到绑定点 0 上
@@ -468,13 +474,12 @@ int main()
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
         // glBindVertexArray(cubeVAO);
-        glBindVertexArray(pointVAO);
-        glm::mat4 model = glm::mat4(1.0f);
-        glm::mat4 normalMatrix = glm::mat4(1.0f);
-
-        // Red point -> Red line by shader with Geometry Shader
         shader.use();
-        glDrawArrays(GL_POINTS, 0, 4);
+        shader.setMat4("projection", projection);
+        shader.setMat4("view", view);
+        shader.setMat4("model", glm::mat4(1.0f));
+        shader.setFloat("time", static_cast<float>(glfwGetTime()));
+        ourModel.render(shader);
         glBindVertexArray(0);
 
 
