@@ -8,23 +8,15 @@ layout (location = 5) in vec3 aBitangent;
 layout (location = 6) in vec4 m_BoneIDs;
 layout (location = 7) in vec4 m_Weights;
 
-out vec3 FragPos;
-out vec3 Normal;
-out vec2 TexCoords;
-out vec3 VertexColor;
-
 out VS_OUT {
-    vec2 texCoords;
+    vec3 normal;
 } vs_out;
 
 uniform mat4 model;
 uniform mat4 view;
-uniform mat4 projection;
 
 void main() 
 {
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
-    FragPos = vec3(model * vec4(aPos, 1.0));
-    Normal = aNormal;
-    vs_out.texCoords = aTexCoords;
+    gl_Position = view * model * vec4(aPos, 1.0);
+    vs_out.normal = aNormal;
 }

@@ -58,6 +58,7 @@ const float REFRACTIVE_INDEX_DIAMOND= 2.42f;
 
 // 几何着色器 相关设置
 const float EXPLODE_MAGNITUDE = 2.0f;
+const float NORMAL_OFFSET = 0.2;
 
 // camera 设置
 Camera camera(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 1.0f, 0.0f));
@@ -410,10 +411,11 @@ int main()
 
     // create Shader
 
-    Shader shader("geometryShader.vs", "geometryShader.fs", "explode.gs");
-    shader.use();
-    shader.setFloat("explode_magnitude", EXPLODE_MAGNITUDE);
-
+    Shader shader("shader.vs", "shader.fs");
+    Shader normalShader("geometryShader.vs", "geometryShader.fs", "check_normal.gs");
+    normalShader.use();
+    normalShader.setFloat("normal_offset", NORMAL_OFFSET);
+    
     // 2. bind Shader's uniform block to binding point
     // 将 各着色器的 uniform 块绑定到绑定点 0 上
     // Shader shaderRed("uniformBufferShader.vs", "Shader_Red.fs");
@@ -478,8 +480,13 @@ int main()
         shader.setMat4("projection", projection);
         shader.setMat4("view", view);
         shader.setMat4("model", glm::mat4(1.0f));
-        shader.setFloat("time", static_cast<float>(glfwGetTime()));
         ourModel.render(shader);
+
+        normalShader.use();
+        normalShader.setMat4("projection", projection);
+        normalShader.setMat4("view", view);
+        normalShader.setMat4("model", glm::mat4(1.0f));
+        ourModel.render(normalShader);
         glBindVertexArray(0);
 
 
