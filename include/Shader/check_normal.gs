@@ -13,7 +13,8 @@ void generateNormalLine(int index)
 {
     gl_Position = projection * gl_in[index].gl_Position;
     EmitVertex();
-    gl_Position = projection * (gl_in[index].gl_Position + vec4(gs_in[index].normal, 0.0) * normal_offset);
+    gl_Position = projection * (gl_in[index].gl_Position + 
+                                vec4(gs_in[index].normal, 0.0) * normal_offset);
     EmitVertex();
     EndPrimitive();
 }

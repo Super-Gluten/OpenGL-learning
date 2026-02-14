@@ -14,9 +14,10 @@ out VS_OUT {
 
 uniform mat4 model;
 uniform mat4 view;
+uniform mat3 normalMatrix;
 
 void main() 
 {
     gl_Position = view * model * vec4(aPos, 1.0);
-    vs_out.normal = aNormal;
+    vs_out.normal = normalize(vec3(vec4(normalMatrix * aNormal, 0.0)));
 }
