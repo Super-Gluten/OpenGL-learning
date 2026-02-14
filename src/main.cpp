@@ -89,6 +89,7 @@ bool is_lightRotate = false;
 bool is_lightColorChange = false;
 bool is_renderBorder = true;
 bool is_faceCulling = false;
+bool is_renderNormal = false;
 
 int lastLState = GLFW_RELEASE;
 int lastEState = GLFW_RELEASE;
@@ -96,6 +97,7 @@ int lastTState = GLFW_RELEASE;
 int lastCState = GLFW_RELEASE;
 int lastBState = GLFW_RELEASE;
 int lastQState = GLFW_RELEASE;
+int lastNState = GLFW_RELEASE;
 
 int main()
 {
@@ -209,7 +211,35 @@ int main()
          5.0f, -0.5f, -5.0f,  2.0f, 2.0f								
     };
 
-    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+
+    // 实例化矩形
+    float quadVertices[] = {
+        // 位置          // 颜色
+        -0.05f,  0.05f,  1.0f, 0.0f, 0.0f,
+         0.05f, -0.05f,  0.0f, 1.0f, 0.0f,
+        -0.05f, -0.05f,  0.0f, 0.0f, 1.0f,
+
+        -0.05f,  0.05f,  1.0f, 0.0f, 0.0f,
+         0.05f, -0.05f,  0.0f, 1.0f, 0.0f,   
+         0.05f,  0.05f,  0.0f, 1.0f, 1.0f                   
+    };  
+
+    // 实例化矩形的 offsets 数组
+    glm::vec2 translations[100];
+    int index = 0;
+    float offset = 0.1f;
+    for(int y = -10; y < 10; y += 2)
+    {
+        for(int x = -10; x < 10; x += 2)
+        {
+            glm::vec2 translation;
+            translation.x = (float)x / 10.0f + offset;
+            translation.y = (float)y / 10.0f + offset;
+            translations[index++] = translation;
+        }
+    }
+
+    float screenQuadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
         // positions   // texCoords
         -1.0f,  1.0f,  0.0f, 1.0f,
         -1.0f, -1.0f,  0.0f, 0.0f,
@@ -309,13 +339,27 @@ int main()
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
     glBindVertexArray(0);
 
-    // screen quad VAO
+    // quad VAO
     unsigned int quadVAO, quadVBO;
     glGenVertexArrays(1, &quadVAO);
     glGenBuffers(1, &quadVBO);
     glBindVertexArray(quadVAO);
     glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
     glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(2 * sizeof(float)));
+    glBindVertexArray(0);
+
+
+    // screen quad VAO
+    unsigned int screenQuadVAO, screenQuadVBO;
+    glGenVertexArrays(1, &screenQuadVAO);
+    glGenBuffers(1, &screenQuadVBO);
+    glBindVertexArray(screenQuadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, screenQuadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(screenQuadVertices), &screenQuadVertices, GL_STATIC_DRAW);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(1);
@@ -411,7 +455,7 @@ int main()
 
     // create Shader
 
-    Shader shader("shader.vs", "Shader_Red.fs");
+    Shader shader("instance_shader.vs", "Shader.fs");
     Shader normalShader("geometryShader.vs", "geometryShader.fs", "check_normal.gs");
     normalShader.use();
     normalShader.setFloat("normal_offset", NORMAL_OFFSET);
@@ -476,21 +520,24 @@ int main()
         glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(view));
         glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-        glBindVertexArray(cubeVAO);
+        glBindVertexArray(quadVAO);
         glm::mat4 model = glm::mat4(1.0f);
-        glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(view * model)));
+        
         shader.use();
-        shader.setMat4("projection", projection);
-        shader.setMat4("view", view);
-        shader.setMat4("model", model);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        for(unsigned int i = 0; i < 100; i++) {
+            shader.setVec2(("offsets[" + std::to_string(i) + "]"), translations[i]);
+        }
+        glDrawArraysInstanced(GL_TRIANGLES, 0, 6, 100);
 
-        normalShader.use();
-        normalShader.setMat4("projection", projection);
-        normalShader.setMat4("view", view);
-        normalShader.setMat4("model", model);
-        normalShader.setMat3("normalMatrix", normalMatrix);
-        glDrawArrays(GL_TRIANGLES, 0, 36);
+        if (is_renderNormal) {
+            normalShader.use();
+            glm::mat3 normalMatrix = glm::mat3(glm::transpose(glm::inverse(view * model)));
+            normalShader.setMat4("projection", projection);
+            normalShader.setMat4("view", view);
+            normalShader.setMat4("model", model);
+            normalShader.setMat3("normalMatrix", normalMatrix);
+            glDrawArrays(GL_TRIANGLES, 0, 6);            
+        }
 
         glBindVertexArray(0);
 
@@ -561,7 +608,7 @@ int main()
         // glClear(GL_COLOR_BUFFER_BIT);
 
         // screenShader.use();
-        // glBindVertexArray(quadVAO);
+        // glBindVertexArray(screenQuadVAO);
         // glDisable(GL_DEPTH_TEST);
         // glBindTexture(GL_TEXTURE_2D, textureColorBuffer);
         // glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -575,11 +622,13 @@ int main()
     glDeleteVertexArrays(1, &cubeVAO);
     glDeleteVertexArrays(1, &planeVAO);
     glDeleteVertexArrays(1, &quadVAO);
+    glDeleteVertexArrays(1, &screenQuadVAO);
     glDeleteVertexArrays(1, &skyboxVAO);
     glDeleteVertexArrays(1, &pointVAO);
     glDeleteBuffers(1, &cubeVBO);
     glDeleteBuffers(1, &planeVBO);
     glDeleteBuffers(1, &quadVBO);
+    glDeleteBuffers(1, &screenQuadVBO);
     glDeleteBuffers(1, &skyboxVBO);
     glDeleteBuffers(1, &pointVBO);
     glDeleteRenderbuffers(1, &rbo);
@@ -649,6 +698,12 @@ void processInput(GLFWwindow *window)
         is_faceCulling = !is_faceCulling;
     }
     lastQState = currentQState;
+
+    int currentNState = glfwGetKey(window, GLFW_KEY_N);
+    if (lastNState == GLFW_RELEASE && currentEState == GLFW_PRESS) {
+        is_renderNormal = !is_renderNormal;
+    }
+    lastNState = currentNState;
 }
 
 // glfw: 每当窗口大小发生变化（由操作系统或用户自行调整）时，此回调函数就会执行。
@@ -709,6 +764,7 @@ void printOperationTips()
     // std::cout << "  C - 切换光源是否变色" << std::endl;
     // std::cout << "  B - 切换是否显示边框" << std::endl;
     // std::cout << "  Q - 切换是否正面剔除" << std::endl;
+    std::cout << "  N - 切换是否渲染法向量" << std::endl;
     std::cout << std::endl;
     
     std::cout << "其他:" << std::endl;
